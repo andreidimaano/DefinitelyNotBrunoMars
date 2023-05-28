@@ -21,3 +21,6 @@ class MusicDataset(Dataset):
             x = self.transform(x)
         
         return x,y
+    
+#NOTE there is another way to make a dataset without using a class, you just need the np data
+#https://pytorch.org/docs/stable/_modules/torch/utils/data/dataset.html#TensorDataset
