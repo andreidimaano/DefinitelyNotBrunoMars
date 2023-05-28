@@ -19,7 +19,6 @@ class MusicDataset(Dataset):
 
         if self.transform is not None:
             x = self.transform(x)
-        
         return x,y
     
 #NOTE there is another way to make a dataset without using a class, you just need the np data
