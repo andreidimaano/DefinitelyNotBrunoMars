@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 
 class MusicDataset(Dataset):
-    def __init__(self, file, time_warp_factor transform=None):
+    def __init__(self, file, time_warp_factor):
         self.data = h5py.File(file, 'r')
         self.mfccs = self.data.get("mfccs").value
         self.x = self.song.reshape((-1,1,64,94))
