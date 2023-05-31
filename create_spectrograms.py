@@ -32,13 +32,13 @@ def flac_to_spectrogram(src_dir, dest_dir):
             if file_name.endswith('.flac'):
                 # Load the FLAC file
                 input_file = os.path.join(src_dir, file_name)
-                audio, sr = librosa.load(input_file)
+                audio, sr = librosa.load(input_file, sr=16000)
 
                 # Generate the spectrogram
-                spectrogram = librosa.amplitude_to_db(librosa.stft(audio), ref=np.max)
+                mfccs = librosa.feature.mfcc(audio,sr=sr)
 
                 # Save the spectrogram to the HDF5 file
-                hf.create_dataset(file_name, data=spectrogram)
-                
+                hf.create_dataset(file_name, data=mfccs)
+
 wav_file = 'path/to/your/file.wav'
 spectrogram = wav_to_spectrogram(wav_file)
