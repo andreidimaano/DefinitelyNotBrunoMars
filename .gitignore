@@ -3,6 +3,8 @@ iu/
 .DS_Store
 *.h5
 
+*.pickle
+
 audiovisualizer/node_modules
 audiovisualizer/dist
 audiovisualizer/.DS_Store
