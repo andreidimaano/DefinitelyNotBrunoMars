@@ -10,7 +10,7 @@ def audio_to_spectrogram(src_dir, artist):
         artist: .pickle directory for artist
     """
     spec_dest = artist + "_spec" + ".pickle"
-    raw_dest = artist + "_spec" + ".pickle"
+    raw_dest = artist  + "_raw" + ".pickle"
 
     mel_list = list()
     raw_list = list()

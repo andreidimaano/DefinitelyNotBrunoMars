@@ -3,6 +3,9 @@ iu/
 .DS_Store
 *.h5
 
+**/__pycache__/
+__pycache__/
+
 *.pickle
 
 audiovisualizer/node_modules
