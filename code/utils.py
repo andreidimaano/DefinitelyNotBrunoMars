@@ -1,5 +1,6 @@
 import soundfile as sf
 from pydub import AudioSegment
+import librosa
 
 def spectrogram_to_wav(spectrogram, mel_mean, mel_std, output_path, sr=22050):
     """
@@ -13,11 +14,13 @@ def spectrogram_to_wav(spectrogram, mel_mean, mel_std, output_path, sr=22050):
         torch.Tensor: wav that represents the decoded spectrogram
     """
     spect_converted = spectrogram * mel_std + mel_mean
+    reconstructed_audio = librosa.feature.inverse.mel_to_audio(librosa.db_to_power(spect_converted))
+
 
     # Save the reconstructed waveform as a .wav file
     if not output_path.endswith(".wav"):
       output_path += '.wav'
-    sf.write(output_path, spect_converted, sr)
+    sf.write(output_path, reconstructed_audio, sr)
     return spect_converted 
 
 def wav_to_mp3(wav_path, output_path):

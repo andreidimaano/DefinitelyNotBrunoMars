@@ -29,7 +29,8 @@ def audio_to_spectrogram(src_dir, artist):
                         raw_list.append(audio)
                     # larger nfft better for frequency resolution
                     # higher hop length for time resolution
-                    print(f'{i} done')
+                    if i % 50 == 0:
+                        print(f'{i} done')
                     i+=1
                 except AttributeError as e:
                     print(f"Error processing file: {file_name} - {e}")
@@ -50,3 +51,9 @@ def audio_to_spectrogram(src_dir, artist):
 
     with open(raw_dest, 'wb') as file:
         pickle.dump(raw_list, file)
+        
+    np.savez(f"{artist}_norm_stat.npz",
+             mean=mel_mean,
+             std=mel_std)
+    
+    return mel_normalized
