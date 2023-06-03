@@ -11,7 +11,8 @@ import {
 	useVideoConfig,
 	random,
 } from 'remotion';
-import audioSource from './assets/lilac.mp3';
+// import audioSource from './assets/lilac.mp3';
+import audioSource from './assets/reconstructed.mp3';
 import coverImg from './assets/brunomars.png';
 import pauseImg from './assets/pause.png';
 import fastForwardImg from './assets/fastForward.png';
