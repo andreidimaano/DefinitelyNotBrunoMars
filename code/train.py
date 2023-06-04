@@ -1,6 +1,7 @@
 import os
 import pickle
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 import torch
@@ -192,6 +193,8 @@ class MaskCycleGANVCTraining(object):
         dloss_arr = []
         gloss_arr = []
         start_time = time.time()
+        gloss = []
+        dloss = []
         for epoch in range(self.start_epoch, self.num_epochs + 1):
             for i, (real_A, mask_A, real_B, mask_B) in enumerate(self.train_dataloader):                
                 if j % 100 == 0:
@@ -249,7 +252,8 @@ class MaskCycleGANVCTraining(object):
                     g_loss = g_loss_A2B + g_loss_B2A + \
                         generator_loss_A2B_2nd + generator_loss_B2A_2nd + \
                         self.cycle_loss_lambda * cycleLoss + self.identity_loss_lambda * identityLoss
-                    
+                    # NOTE GENERATOR LOSS IS HERE
+                    gloss.append(g_loss.item())
                     if j % 100 == 0:
                         gloss_arr.append(np.log(g_loss.clone().cpu().detach().item()))
                     
@@ -319,9 +323,6 @@ class MaskCycleGANVCTraining(object):
                     d_loss = (d_loss_A + d_loss_B) / 2.0 + \
                         (d_loss_A_2nd + d_loss_B_2nd) / 2.0
 
-                    if j % 100 == 0:
-                        dloss_arr.append(d_loss.clone().cpu().detach().item())
-
                     if j % 1000 == 0:
                         print("d loss:", dloss_arr)
                         plt.plot(dloss_arr)
@@ -350,8 +351,15 @@ class MaskCycleGANVCTraining(object):
             
             print(f'epoch {epoch} done')
         end_time = time.time()
+        csv_data = {"Generator Loss" : gloss, "Discriminator Loss" : dloss}
+        df = pd.DataFrame.from_dict(csv_data)
+        df.to_csv("Losses", index=False)
+        torch.save(self.generator_A2B.state_dict(), "genAtoB.pth")
+        torch.save(self.generator_B2A.state_dict(), "genBtoA.pth")
+        torch.save(self.discriminator_A.state_dict(), "disA.pth")
+        torch.save(self.discriminator_B.state_dict(), "disB.pth")
+        torch.save(self.discriminator_A2.state_dict(), "disA2.pth")
+        torch.save(self.discriminator_B2.state_dict(), "disB2.pth")
 
         self.training_time = end_time - start_time
-        self.average_time = self.training_time / (self.num_epochs - self.start_epoch)    
-        
-        return gloss_arr, dloss_arr
+        self.average_time = self.training_time / (self.num_epochs - self.start_epoch)
