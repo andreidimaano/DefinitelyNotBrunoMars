@@ -27,7 +27,7 @@ class VCDataset(Dataset):
         datasetB_spec = self.datasetB_spec
         datasetB_raw = self.datasetB_raw
         n_frames = self.n_frames # where each training sample consisted of 64 randomly cropped frames
-        
+       #sr is 22050 
         # Augmentations
         # VoTrans, NoisyF0
         # Time Warping
