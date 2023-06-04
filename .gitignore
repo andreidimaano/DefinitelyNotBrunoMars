@@ -1,5 +1,8 @@
 bruno_mars/
 iu/
+bruno_mars_test/
+iu_test/
+iu_all/
 .DS_Store
 *.h5
 
@@ -12,3 +15,11 @@ audiovisualizer/node_modules
 audiovisualizer/dist
 audiovisualizer/.DS_Store
 audiovisualizer/.env
+
+model_checkpoint/*.pth
+code/model_checkpoint/DA.pth
+code/model_checkpoint/DA2.pth
+code/model_checkpoint/DB.pth
+code/model_checkpoint/DB2.pth
+code/model_checkpoint/GA2B.pth
+code/model_checkpoint/GB2A.pth

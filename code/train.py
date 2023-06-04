@@ -1,6 +1,7 @@
 import os
 import pickle
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 import torch
@@ -12,6 +13,7 @@ from maskgan.modelv3 import Generator, Discriminator
 from data.VCDataset import VCDataset
 import h5py
 import time
+import matplotlib.pyplot as plt
 # from mask_cyclegan_vc.utils import decode_melspectrogram, get_mel_spectrogram_fig
 # from logger.train_logger import TrainLogger
 # from saver.model_saver import ModelSaver
@@ -25,7 +27,7 @@ class MaskCycleGANVCTraining(object):
     """Trainer for MaskCycleGAN-VC
     """
 
-    def __init__(self):
+    def __init__(self, load_model=False):
         """
         Args:
             args (Namespace): Program arguments from argparser
@@ -37,7 +39,7 @@ class MaskCycleGANVCTraining(object):
         self.start_epoch = 1
         self.generator_lr = 1e-5
         self.discriminator_lr = 1e-4
-        self.decay_after = 2e5
+        self.decay_after = 1e5
         self.stop_identity_after = 1e4
         self.mini_batch_size = 1
         self.cycle_loss_lambda = 10
@@ -108,6 +110,7 @@ class MaskCycleGANVCTraining(object):
                                                                  shuffle=False,
                                                                  drop_last=False)
 
+
         # Initialize Generators and Discriminators
         self.generator_A2B = Generator().to(self.device)
         self.generator_B2A = Generator().to(self.device)
@@ -117,6 +120,16 @@ class MaskCycleGANVCTraining(object):
         self.discriminator_A2 = Discriminator().to(self.device)
         # Discriminator to compute 2 step adversarial loss
         self.discriminator_B2 = Discriminator().to(self.device)
+        
+        if load_model:
+            self.generator_A2B.load_state_dict(torch.load('model_checkpoint/GA2B.pth'))
+            self.generator_B2A.load_state_dict(torch.load('model_checkpoint/GB2A.pth'))
+            self.discriminator_A.load_state_dict(torch.load('model_checkpoint/DA.pth'))
+            self.discriminator_B.load_state_dict(torch.load('model_checkpoint/DB.pth'))
+            # Discriminator to compute 2 step adversarial loss
+            self.discriminator_A2.load_state_dict(torch.load('model_checkpoint/DA2.pth'))
+            # Discriminator to compute 2 step adversarial loss
+            self.discriminator_B2.load_state_dict(torch.load('model_checkpoint/DB2.pth'))
 
         # Initialize Optimizers
         g_params = list(self.generator_A2B.parameters()) + \
@@ -170,15 +183,20 @@ class MaskCycleGANVCTraining(object):
         return self.training_time, self.average_time
 
     def get_generator_dsicriminator(self):
-        return self.generator_A2B, self.generator_B2A, self.discriminator_A, self.discriminator_B, self.discriminator_A2, self.discriminator_B2
+        # return self.generator_B2A, self.discriminator_A, self.discriminator_B, self.discriminator_A2, self.discriminator_B2
+        return self.generator_A2B
     
     def train(self):
         """Implements the training loop for MaskCycleGAN-VC
         """
         j = 0
+        dloss_arr = []
+        gloss_arr = []
         start_time = time.time()
+        gloss = []
+        dloss = []
         for epoch in range(self.start_epoch, self.num_epochs + 1):
-            for i, (real_A, mask_A, real_B, mask_B) in enumerate(self.train_dataloader):
+            for i, (real_A, mask_A, real_B, mask_B) in enumerate(self.train_dataloader):                
                 if j % 100 == 0:
                     print(f'iteration {j} start')
 
@@ -234,9 +252,19 @@ class MaskCycleGANVCTraining(object):
                     g_loss = g_loss_A2B + g_loss_B2A + \
                         generator_loss_A2B_2nd + generator_loss_B2A_2nd + \
                         self.cycle_loss_lambda * cycleLoss + self.identity_loss_lambda * identityLoss
+                    # NOTE GENERATOR LOSS IS HERE
+                    gloss.append(g_loss.item())
+                    if j % 100 == 0:
+                        gloss_arr.append(np.log(g_loss.clone().cpu().detach().item()))
                     
                     if j % 1000 == 0:
-                        print("generator loss:", g_loss)
+                        print("generator loss:", gloss_arr)
+                        plt.plot(gloss_arr)
+                        plt.title('Loss over Training')
+                        plt.xlabel('Iterations')
+                        plt.ylabel('Loss')
+
+                        
 
                     # Backprop for Generator
                     self.reset_grad()
@@ -296,14 +324,42 @@ class MaskCycleGANVCTraining(object):
                         (d_loss_A_2nd + d_loss_B_2nd) / 2.0
 
                     if j % 1000 == 0:
-                        print("d loss:", d_loss)
+                        print("d loss:", dloss_arr)
+                        plt.plot(dloss_arr)
+                        # Show the plot
+                        plt.show()
                     # Backprop for Discriminator
                     self.reset_grad()
                     d_loss.backward()
                     self.discriminator_optimizer.step()
-
+                if j > self.decay_after:
+                    self.adjust_lr_rate(
+                        self.generator_optimizer, generator=True)
+                    self.adjust_lr_rate(
+                        self.generator_optimizer, generator=False)
+                
+                if j > self.stop_identity_after:
+                    self.identity_loss_lambda = 0
                 j += 1
+            
+            torch.save(self.generator_A2B .state_dict(), 'model_checkpoint/GA2B.pth')
+            torch.save(self.generator_B2A .state_dict(), 'model_checkpoint/GB2A.pth')
+            torch.save(self.discriminator_A.state_dict(), 'model_checkpoint/DA.pth')
+            torch.save(self.discriminator_B.state_dict(), 'model_checkpoint/DB.pth')
+            torch.save(self.discriminator_A2.state_dict(), 'model_checkpoint/DA2.pth')
+            torch.save(self.discriminator_B2.state_dict(), 'model_checkpoint/DB2.pth')
+            
+            print(f'epoch {epoch} done')
         end_time = time.time()
+        csv_data = {"Generator Loss" : gloss, "Discriminator Loss" : dloss}
+        df = pd.DataFrame.from_dict(csv_data)
+        df.to_csv("Losses", index=False)
+        torch.save(self.generator_A2B.state_dict(), "genAtoB.pth")
+        torch.save(self.generator_B2A.state_dict(), "genBtoA.pth")
+        torch.save(self.discriminator_A.state_dict(), "disA.pth")
+        torch.save(self.discriminator_B.state_dict(), "disB.pth")
+        torch.save(self.discriminator_A2.state_dict(), "disA2.pth")
+        torch.save(self.discriminator_B2.state_dict(), "disB2.pth")
 
         self.training_time = end_time - start_time
         self.average_time = self.training_time / (self.num_epochs - self.start_epoch)
