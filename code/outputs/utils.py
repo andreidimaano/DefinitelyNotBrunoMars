@@ -21,7 +21,6 @@ def spectrogram_to_wav(spectrogram, mel_mean, mel_std, output_path, sr=22050):
     if not output_path.endswith(".wav"):
       output_path += '.wav'
     sf.write(output_path, reconstructed_audio, sr)
-    return spect_converted 
 
 def wav_to_mp3(wav_path, output_path):
    audio = AudioSegment.from_wav(wav_path)
