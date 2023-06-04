@@ -312,5 +312,12 @@ class MaskCycleGANVCTraining(object):
         csv_data = {"Generator Loss" : gloss, "Discriminator Loss" : dloss}
         df = pd.DataFrame.from_dict(csv_data)
         df.to_csv("Losses", index=False)
+        torch.save(self.generator_A2B, "output/genAtoB.pth")
+        torch.save(self.generator_B2A, "output/genBtoA.pth")
+        torch.save(self.discriminator_A, "output/disA.pth")
+        torch.save(self.discriminator_B, "output/disB.pth")
+        torch.save(self.discriminator_A2, "output/disA2.pth")
+        torch.save(self.discriminator_B2, "output/disB2.pth")
+
         self.training_time = end_time - start_time
         self.average_time = self.training_time / (self.num_epochs - self.start_epoch)
