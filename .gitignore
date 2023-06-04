@@ -1,5 +1,8 @@
 bruno_mars/
 iu/
+bruno_mars_test/
+iu_test/
+iu_all/
 .DS_Store
 *.h5
 
