@@ -10,6 +10,7 @@ from torch.utils.data.dataset import Dataset
 from .augmentation import *
 import torch
 import numpy as np
+import copy
 
 
 class VCDataset(Dataset):
@@ -30,12 +31,11 @@ class VCDataset(Dataset):
         self.FreqMask=FreqMask
 
     def __getitem__(self, index):
-        datasetA_spec = self.datasetA_spec
-        datasetA_raw = self.datasetA_raw
-        datasetB_spec = self.datasetB_spec
-        datasetB_raw = self.datasetB_raw
+        datasetA_spec = self.datasetA_spec.copy()
+        datasetA_raw = self.datasetA_raw.copy()
+        datasetB_spec = self.datasetB_spec.copy()
+        datasetB_raw = self.datasetB_raw.copy()
         n_frames = self.n_frames # where each training sample consisted of 64 randomly cropped frames
-        print(n_frames)
        #sr is 22050 
         # Augmentations
         # VoTrans, NoisyF0
@@ -64,10 +64,10 @@ class VCDataset(Dataset):
                 melA_spec = librosa.feature.melspectrogram(y=datasetA_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
                 logmelA_spec = librosa.power_to_db(melA_spec, ref=np.max)
                 datasetA_spec[i] = logmelA_spec
-                if self.TimeMask:
-                    datasetA_spec[i] = time_mask(datasetA_spec[i])
-                if self.FreqMask:
-                    datasetA_spec = freq_mask(datasetA_spec[i])
+                #if self.TimeMask:
+                #    datasetA_spec[i] = time_mask(datasetA_spec[i])
+                #if self.FreqMask:
+                #    datasetA_spec[i] = freq_mask(datasetA_spec[i])
 
 
             for i in range(len(datasetB_raw)):
@@ -83,10 +83,23 @@ class VCDataset(Dataset):
                 melB_spec = librosa.feature.melspectrogram(y=datasetB_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
                 logmelB_spec = librosa.power_to_db(melB_spec, ref=np.max)
                 datasetB_spec[i] = logmelB_spec
+                #if self.TimeMask:
+                #    datasetB_spec[i] = time_mask(datasetB_spec[i])
+                #if self.FreqMask:
+                #    datasetB_spec[i] = freq_mask(datasetB_spec[i])    
+        if self.TimeMask or self.FreqMask:
+            for i in range(len(datasetA_spec)):
+                if self.TimeMask:
+                    datasetA_spec[i] = time_mask(datasetA_spec[i])
+                if self.FreqMask:
+                    datasetA_spec[i] = freq_mask(datasetA_spec[i])
+            
+            for i in range(len(datasetB_spec)):
                 if self.TimeMask:
                     datasetB_spec[i] = time_mask(datasetB_spec[i])
                 if self.FreqMask:
-                    datasetB_spec[i] = freq_mask(datasetB_spec[i])    
+                    datasetB_spec[i] = freq_mask(datasetB_spec[i]) 
+
         if self.valid:
             if datasetB_spec is None:  # only return datasetA utterance
                 return datasetA_spec[index]
