@@ -12,7 +12,8 @@ import numpy as np
 
 
 class VCDataset(Dataset):
-    def __init__(self, datasetA_spec, datasetB_spec, datasetA_raw=None, datasetB_raw=None, n_frames=64, max_mask_len=25, valid=False):
+    def __init__(self, datasetA_spec, datasetB_spec, datasetA_raw=None, datasetB_raw=None, n_frames=64, max_mask_len=25, valid=False, 
+        TimeStretch=False, PitchShift=False, HarmDist=False, WhiteNoise=False, TimeMask=False, FreqMask=False):
         self.datasetA_spec = datasetA_spec
         self.datasetA_raw = datasetA_raw
         self.datasetB_spec = datasetB_spec
@@ -20,6 +21,12 @@ class VCDataset(Dataset):
         self.n_frames = n_frames
         self.valid = valid
         self.max_mask_len = max_mask_len
+        self.TimeStretch = TimeStretch 
+        self.PitchShift=PitchShift
+        self.HarmDist=HarmDist
+        self.WhiteNoise=WhiteNoise
+        self.TimeMask=TimeMask
+        self.FreqMask=FreqMask
 
     def __getitem__(self, index):
         datasetA_spec = self.datasetA_spec

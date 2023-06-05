@@ -35,7 +35,7 @@ class MaskCycleGANVCTraining(object):
         # Store args
         self.training_time = 0
         self.average_time = 0
-        self.num_epochs = 10
+        self.num_epochs = 2
         self.start_epoch = 1
         self.generator_lr = 1e-5
         self.discriminator_lr = 1e-4
@@ -322,6 +322,7 @@ class MaskCycleGANVCTraining(object):
                     # Final Loss for discriminator with the Two Step Adverserial Loss
                     d_loss = (d_loss_A + d_loss_B) / 2.0 + \
                         (d_loss_A_2nd + d_loss_B_2nd) / 2.0
+                    dloss.append(d_loss.item())
 
                     if j % 1000 == 0:
                         print("d loss:", dloss_arr)
@@ -352,8 +353,9 @@ class MaskCycleGANVCTraining(object):
             print(f'epoch {epoch} done')
         end_time = time.time()
         csv_data = {"Generator Loss" : gloss, "Discriminator Loss" : dloss}
+        print(csv_data)
         df = pd.DataFrame.from_dict(csv_data)
-        df.to_csv("Losses", index=False)
+        df.to_csv("Losses.csv", index=False)
         torch.save(self.generator_A2B.state_dict(), "genAtoB.pth")
         torch.save(self.generator_B2A.state_dict(), "genBtoA.pth")
         torch.save(self.discriminator_A.state_dict(), "disA.pth")

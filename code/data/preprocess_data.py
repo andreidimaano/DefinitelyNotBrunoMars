@@ -18,9 +18,10 @@ def audio_to_spectrogram(src_dir, artist):
     i = 0
     for root, _, files in os.walk(src_dir, topdown=False):
         for file_name in files:
-            if file_name.endswith('.flac') or file_name.endswith('.mp3'):
+            if file_name.endswith('.flac') or file_name.endswith('.mp3') or file_name.endswith('.wav'):
                 try:
                     input_file = os.path.join(root, file_name)
+                    print(file_name, input_file)
                     audio, sr = librosa.load(input_file, sr=22050)
                     mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr, n_fft=1024, hop_length=256, n_mels=80)
                     log_mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
@@ -35,7 +36,7 @@ def audio_to_spectrogram(src_dir, artist):
                 except AttributeError as e:
                     print(f"Error processing file: {file_name} - {e}")
                     continue
-
+    print("bruh")
     mel_concatenated = np.concatenate(mel_list, axis=1)
     mel_mean = np.mean(mel_concatenated, axis=1, keepdims=True)
     mel_std = np.std(mel_concatenated, axis=1, keepdims=True) + 1e-9
