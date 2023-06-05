@@ -93,7 +93,8 @@ class MaskCycleGANVCTraining(object):
                     datasetA_raw=self.datasetA_raw,
                     datasetB_raw=self.datasetB_raw,
                     n_frames=64, 
-                    max_mask_len=25)
+                    max_mask_len=25,
+                    TimeStretch=True)
         self.train_dataloader = torch.utils.data.DataLoader(dataset=self.dataset,
                                                             batch_size=self.mini_batch_size,
                                                             shuffle=True,

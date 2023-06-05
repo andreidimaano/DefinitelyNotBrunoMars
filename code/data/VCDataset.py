@@ -7,6 +7,7 @@ two datasets as well as corresponding masks.
 """
 
 from torch.utils.data.dataset import Dataset
+from .augmentation import *
 import torch
 import numpy as np
 
@@ -34,6 +35,8 @@ class VCDataset(Dataset):
         datasetB_spec = self.datasetB_spec
         datasetB_raw = self.datasetB_raw
         n_frames = self.n_frames # where each training sample consisted of 64 randomly cropped frames
+
+
        #sr is 22050 
         # Augmentations
         # VoTrans, NoisyF0
@@ -41,6 +44,47 @@ class VCDataset(Dataset):
         # Frequency Masking
         # Speed up
         # Pitch Shift
+        
+        # THESE ARE SPECTOGRAM AUGS
+        # TimeMask
+        # FrequencyMask
+        # nothing, 1, 2, 3, 4, 5, 6, (1,2), (1,6), (5,6)
+
+        if self.TimeStretch or self.PitchShift or self.HarmDist or self.WhiteNoise:
+            #APPLY AUG FIRST AND THEN CONVERT WAV TO SPECTO
+            if self.TimeStretch:
+                print(type(datasetA_raw), datasetA_raw)
+                for i in range(len(datasetA_raw)):
+                    datasetA_raw[i] = time_stretch(data=datasetA_raw[i], factor=3)
+                for i in range(len(datasetB_raw)):
+                    datasetB_raw[i] = time_stretch(data=datasetB_raw[i], factor=3)
+            if self.PitchShift:
+                datasetA_raw = pitch_shift(data=datasetA_raw, sr=22050, factor=.1)
+                datasetB_raw = pitch_shift(data=datasetB_raw, sr=22050, factor=.1)
+            if self.WhiteNoise:
+                datasetA_raw = pitch_shift(data=datasetA_raw, factor=1.5)
+                datasetB_raw = pitch_shift(data=datasetB_raw, factor=1.5)
+            if self.HarmDist:
+                datasetA_raw = pitch_shift(data=datasetA_raw)
+                datasetB_raw = pitch_shift(data=datasetB_raw)
+
+            print("Conversion is here", type(datasetA_raw))
+            melA_spec = librosa.feature.melspectrogram(y=datasetA_raw, sr=22050, n_fft=1024, hop_length=256, n_mels=80)
+            print("Can't convert here bc not numpy?")
+            logmelA_spec = librosa.power_to_db(melA_spec, ref=np.max)
+            datasetA_spec = logmelA_spec
+
+            melB_spec = librosa.feature.melspectrogram(y=datasetB_raw, sr=22050, n_fft=1024, hop_length=256, n_mels=80)
+            logmelB_spec = librosa.power_to_db(melB_spec, ref=np.max)
+            datasetB_spec = logmelB_spec
+
+        if self.TimeMask:
+            datasetA_spec = time_mask(datasetA_spec)
+            datasetB_spec = time_mask(datasetB_spec)
+
+        if self.FreqMask:
+            datasetA_spec = freq_mask(datasetA_raw)
+            datasetB_spec = freq_mask(datasetB_spec)
 
         if self.valid:
             if datasetB_spec is None:  # only return datasetA utterance
