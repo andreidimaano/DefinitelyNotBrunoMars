@@ -11,6 +11,7 @@ from .augmentation import *
 import torch
 import numpy as np
 import copy
+import random
 
 
 class VCDataset(Dataset):
@@ -52,13 +53,13 @@ class VCDataset(Dataset):
         if self.TimeStretch or self.PitchShift or self.HarmDist or self.WhiteNoise:
             #APPLY AUG FIRST AND THEN CONVERT WAV TO SPECTO
             for i in range(len(datasetA_raw)):
-                if self.TimeStretch:
+                if self.TimeStretch and random.randint(0,5) == 0:
                     datasetA_raw[i] = time_stretch(data=datasetA_raw[i], factor=3)
-                if self.PitchShift:
+                if self.PitchShift and random.randint(0,5) == 0:
                     datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], sr=22050, factor=.1)
-                if self.WhiteNoise:
+                if self.WhiteNoise and random.randint(0,5) == 0:
                     datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], factor=1.5)
-                if self.HarmDist:
+                if self.HarmDist and random.randint(0,5) == 0:
                     datasetA_raw[i] = pitch_shift(data=datasetA_raw[i])
 
                 melA_spec = librosa.feature.melspectrogram(y=datasetA_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
@@ -71,13 +72,13 @@ class VCDataset(Dataset):
 
 
             for i in range(len(datasetB_raw)):
-                if self.TimeStretch:
+                if self.TimeStretch and random.randint(0,5) == 0:
                     datasetB_raw[i] = time_stretch(data=datasetB_raw[i], factor=3)
-                if self.PitchShift:
+                if self.PitchShift and random.randint(0,5) == 0:
                     datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], sr=22050, factor=.1)
-                if self.WhiteNoise:
+                if self.WhiteNoise and random.randint(0,5) == 0:
                     datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], factor=1.5)
-                if self.HarmDist:
+                if self.HarmDist and random.randint(0,5) == 0:
                     datasetB_raw[i] = pitch_shift(data=datasetB_raw[i])
 
                 melB_spec = librosa.feature.melspectrogram(y=datasetB_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
@@ -89,15 +90,15 @@ class VCDataset(Dataset):
                 #    datasetB_spec[i] = freq_mask(datasetB_spec[i])    
         if self.TimeMask or self.FreqMask:
             for i in range(len(datasetA_spec)):
-                if self.TimeMask:
+                if self.TimeMask and random.randint(0,5) == 0:
                     datasetA_spec[i] = time_mask(datasetA_spec[i])
-                if self.FreqMask:
+                if self.FreqMask and random.randint(0,5) == 0:
                     datasetA_spec[i] = freq_mask(datasetA_spec[i])
             
             for i in range(len(datasetB_spec)):
-                if self.TimeMask:
+                if self.TimeMask and random.randint(0,5) == 0:
                     datasetB_spec[i] = time_mask(datasetB_spec[i])
-                if self.FreqMask:
+                if self.FreqMask and random.randint(0,5) == 0:
                     datasetB_spec[i] = freq_mask(datasetB_spec[i]) 
 
         if self.valid:
