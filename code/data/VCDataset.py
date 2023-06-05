@@ -56,11 +56,11 @@ class VCDataset(Dataset):
                 if self.TimeStretch and random.randint(0,5) == 0:
                     datasetA_raw[i] = time_stretch(data=datasetA_raw[i], factor=3)
                 if self.PitchShift and random.randint(0,5) == 0:
-                    datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], sr=22050, factor=.1)
+                    datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], sr=22050, steps=.1)
                 if self.WhiteNoise and random.randint(0,5) == 0:
-                    datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], factor=1.5)
+                    datasetA_raw[i] = white_noise(data=datasetA_raw[i], intensity=1.5)
                 if self.HarmDist and random.randint(0,5) == 0:
-                    datasetA_raw[i] = pitch_shift(data=datasetA_raw[i])
+                    datasetA_raw[i] = harm_distort(data=datasetA_raw[i])
 
                 melA_spec = librosa.feature.melspectrogram(y=datasetA_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
                 logmelA_spec = librosa.power_to_db(melA_spec, ref=np.max)
@@ -75,11 +75,11 @@ class VCDataset(Dataset):
                 if self.TimeStretch and random.randint(0,5) == 0:
                     datasetB_raw[i] = time_stretch(data=datasetB_raw[i], factor=3)
                 if self.PitchShift and random.randint(0,5) == 0:
-                    datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], sr=22050, factor=.1)
+                    datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], sr=22050, steps=.1)
                 if self.WhiteNoise and random.randint(0,5) == 0:
-                    datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], factor=1.5)
+                    datasetB_raw[i] = white_noise(data=datasetB_raw[i], intensity=1.5)
                 if self.HarmDist and random.randint(0,5) == 0:
-                    datasetB_raw[i] = pitch_shift(data=datasetB_raw[i])
+                    datasetB_raw[i] = harm_distort(data=datasetB_raw[i])
 
                 melB_spec = librosa.feature.melspectrogram(y=datasetB_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
                 logmelB_spec = librosa.power_to_db(melB_spec, ref=np.max)
