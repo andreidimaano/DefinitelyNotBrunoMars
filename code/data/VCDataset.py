@@ -35,8 +35,7 @@ class VCDataset(Dataset):
         datasetB_spec = self.datasetB_spec
         datasetB_raw = self.datasetB_raw
         n_frames = self.n_frames # where each training sample consisted of 64 randomly cropped frames
-
-
+        print(n_frames)
        #sr is 22050 
         # Augmentations
         # VoTrans, NoisyF0
@@ -52,40 +51,42 @@ class VCDataset(Dataset):
 
         if self.TimeStretch or self.PitchShift or self.HarmDist or self.WhiteNoise:
             #APPLY AUG FIRST AND THEN CONVERT WAV TO SPECTO
-            if self.TimeStretch:
-                print(type(datasetA_raw), datasetA_raw)
-                for i in range(len(datasetA_raw)):
+            for i in range(len(datasetA_raw)):
+                if self.TimeStretch:
                     datasetA_raw[i] = time_stretch(data=datasetA_raw[i], factor=3)
-                for i in range(len(datasetB_raw)):
+                if self.PitchShift:
+                    datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], sr=22050, factor=.1)
+                if self.WhiteNoise:
+                    datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], factor=1.5)
+                if self.HarmDist:
+                    datasetA_raw[i] = pitch_shift(data=datasetA_raw[i])
+
+                melA_spec = librosa.feature.melspectrogram(y=datasetA_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
+                logmelA_spec = librosa.power_to_db(melA_spec, ref=np.max)
+                datasetA_spec[i] = logmelA_spec
+                if self.TimeMask:
+                    datasetA_spec[i] = time_mask(datasetA_spec[i])
+                if self.FreqMask:
+                    datasetA_spec = freq_mask(datasetA_spec[i])
+
+
+            for i in range(len(datasetB_raw)):
+                if self.TimeStretch:
                     datasetB_raw[i] = time_stretch(data=datasetB_raw[i], factor=3)
-            if self.PitchShift:
-                datasetA_raw = pitch_shift(data=datasetA_raw, sr=22050, factor=.1)
-                datasetB_raw = pitch_shift(data=datasetB_raw, sr=22050, factor=.1)
-            if self.WhiteNoise:
-                datasetA_raw = pitch_shift(data=datasetA_raw, factor=1.5)
-                datasetB_raw = pitch_shift(data=datasetB_raw, factor=1.5)
-            if self.HarmDist:
-                datasetA_raw = pitch_shift(data=datasetA_raw)
-                datasetB_raw = pitch_shift(data=datasetB_raw)
+                if self.PitchShift:
+                    datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], sr=22050, factor=.1)
+                if self.WhiteNoise:
+                    datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], factor=1.5)
+                if self.HarmDist:
+                    datasetB_raw[i] = pitch_shift(data=datasetB_raw[i])
 
-            print("Conversion is here", type(datasetA_raw))
-            melA_spec = librosa.feature.melspectrogram(y=datasetA_raw, sr=22050, n_fft=1024, hop_length=256, n_mels=80)
-            print("Can't convert here bc not numpy?")
-            logmelA_spec = librosa.power_to_db(melA_spec, ref=np.max)
-            datasetA_spec = logmelA_spec
-
-            melB_spec = librosa.feature.melspectrogram(y=datasetB_raw, sr=22050, n_fft=1024, hop_length=256, n_mels=80)
-            logmelB_spec = librosa.power_to_db(melB_spec, ref=np.max)
-            datasetB_spec = logmelB_spec
-
-        if self.TimeMask:
-            datasetA_spec = time_mask(datasetA_spec)
-            datasetB_spec = time_mask(datasetB_spec)
-
-        if self.FreqMask:
-            datasetA_spec = freq_mask(datasetA_raw)
-            datasetB_spec = freq_mask(datasetB_spec)
-
+                melB_spec = librosa.feature.melspectrogram(y=datasetB_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
+                logmelB_spec = librosa.power_to_db(melB_spec, ref=np.max)
+                datasetB_spec[i] = logmelB_spec
+                if self.TimeMask:
+                    datasetB_spec[i] = time_mask(datasetB_spec[i])
+                if self.FreqMask:
+                    datasetB_spec[i] = freq_mask(datasetB_spec[i])    
         if self.valid:
             if datasetB_spec is None:  # only return datasetA utterance
                 return datasetA_spec[index]
@@ -113,6 +114,7 @@ class VCDataset(Dataset):
         for idx_A, idx_B in zip(train_data_A_idx_subset, train_data_B_idx_subset):
             data_A = datasetA_spec[idx_A]
             frames_A_total = data_A.shape[1]
+            #print(data_A.shape)
             assert frames_A_total >= n_frames
             start_A = np.random.randint(frames_A_total - n_frames + 1)
             end_A = start_A + n_frames
@@ -126,6 +128,7 @@ class VCDataset(Dataset):
 
             data_B = datasetB_spec[idx_B]
             frames_B_total = data_B.shape[1]
+            #print(data_B.shape)
             assert frames_B_total >= n_frames
             start_B = np.random.randint(frames_B_total - n_frames + 1)
             end_B = start_B + n_frames
