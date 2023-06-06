@@ -29,7 +29,7 @@ def white_noise(data, factor): # needs testing
   new_data = data + (factor * w_noise)
   return new_data
     
-def harm_distort(data): # needs testing
+def harm_distort(data, factor=None): # needs testing
    # https://arxiv.org/pdf/1912.07756.pdf
    new_data = np.sin(np.sin(np.sin(np.sin(np.sin(2*np.pi*data)))))
    return new_data

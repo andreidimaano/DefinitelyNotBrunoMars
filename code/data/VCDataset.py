@@ -50,56 +50,56 @@ class VCDataset(Dataset):
         # FrequencyMask
         # nothing, 1, 2, 3, 4, 5, 6, (1,2), (1,6), (5,6)
 
-        if self.TimeStretch or self.PitchShift or self.HarmDist or self.WhiteNoise:
+        #if self.TimeStretch or self.PitchShift or self.HarmDist or self.WhiteNoise:
             #APPLY AUG FIRST AND THEN CONVERT WAV TO SPECTO
-            for i in range(len(datasetA_raw)):
-                if self.TimeStretch and random.randint(0,5) == 0:
-                    datasetA_raw[i] = time_stretch(data=datasetA_raw[i], factor=3)
-                if self.PitchShift and random.randint(0,5) == 0:
-                    datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], sr=22050, steps=.1)
-                if self.WhiteNoise and random.randint(0,5) == 0:
-                    datasetA_raw[i] = white_noise(data=datasetA_raw[i], intensity=1.5)
-                if self.HarmDist and random.randint(0,5) == 0:
-                    datasetA_raw[i] = harm_distort(data=datasetA_raw[i])
+        #    for i in range(len(datasetA_raw)):
+        #        if self.TimeStretch and random.randint(0,5) == 0:
+        #            datasetA_raw[i] = time_stretch(data=datasetA_raw[i], factor=3)
+        #        if self.PitchShift and random.randint(0,5) == 0:
+        #            datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], sr=22050, steps=.1)
+        #        if self.WhiteNoise and random.randint(0,5) == 0:
+        #            datasetA_raw[i] = white_noise(data=datasetA_raw[i], intensity=1.5)
+        #        if self.HarmDist and random.randint(0,5) == 0:
+        #            datasetA_raw[i] = harm_distort(data=datasetA_raw[i])
 
-                melA_spec = librosa.feature.melspectrogram(y=datasetA_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
-                logmelA_spec = librosa.power_to_db(melA_spec, ref=np.max)
-                datasetA_spec[i] = logmelA_spec
+        #        melA_spec = librosa.feature.melspectrogram(y=datasetA_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
+        #        logmelA_spec = librosa.power_to_db(melA_spec, ref=np.max)
+        #        datasetA_spec[i] = logmelA_spec
                 #if self.TimeMask:
                 #    datasetA_spec[i] = time_mask(datasetA_spec[i])
                 #if self.FreqMask:
                 #    datasetA_spec[i] = freq_mask(datasetA_spec[i])
 
 
-            for i in range(len(datasetB_raw)):
-                if self.TimeStretch and random.randint(0,5) == 0:
-                    datasetB_raw[i] = time_stretch(data=datasetB_raw[i], factor=3)
-                if self.PitchShift and random.randint(0,5) == 0:
-                    datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], sr=22050, steps=.1)
-                if self.WhiteNoise and random.randint(0,5) == 0:
-                    datasetB_raw[i] = white_noise(data=datasetB_raw[i], intensity=1.5)
-                if self.HarmDist and random.randint(0,5) == 0:
-                    datasetB_raw[i] = harm_distort(data=datasetB_raw[i])
+        #   for i in range(len(datasetB_raw)):
+        #        if self.TimeStretch and random.randint(0,5) == 0:
+        #            datasetB_raw[i] = time_stretch(data=datasetB_raw[i], factor=3)
+        #        if self.PitchShift and random.randint(0,5) == 0:
+        #            datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], sr=22050, steps=.1)
+        #        if self.WhiteNoise and random.randint(0,5) == 0:
+        #            datasetB_raw[i] = white_noise(data=datasetB_raw[i], intensity=1.5)
+        #        if self.HarmDist and random.randint(0,5) == 0:
+        #            datasetB_raw[i] = harm_distort(data=datasetB_raw[i])
 
-                melB_spec = librosa.feature.melspectrogram(y=datasetB_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
-                logmelB_spec = librosa.power_to_db(melB_spec, ref=np.max)
-                datasetB_spec[i] = logmelB_spec
+        #        melB_spec = librosa.feature.melspectrogram(y=datasetB_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
+        #        logmelB_spec = librosa.power_to_db(melB_spec, ref=np.max)
+        #        datasetB_spec[i] = logmelB_spec
                 #if self.TimeMask:
                 #    datasetB_spec[i] = time_mask(datasetB_spec[i])
                 #if self.FreqMask:
                 #    datasetB_spec[i] = freq_mask(datasetB_spec[i])    
-        if self.TimeMask or self.FreqMask:
-            for i in range(len(datasetA_spec)):
-                if self.TimeMask and random.randint(0,5) == 0:
-                    datasetA_spec[i] = time_mask(datasetA_spec[i])
-                if self.FreqMask and random.randint(0,5) == 0:
-                    datasetA_spec[i] = freq_mask(datasetA_spec[i])
+        #if self.TimeMask or self.FreqMask:
+        #    for i in range(len(datasetA_spec)):
+        #        if self.TimeMask and random.randint(0,5) == 0:
+        #            datasetA_spec[i] = time_mask(datasetA_spec[i])
+        #        if self.FreqMask and random.randint(0,5) == 0:
+        #            datasetA_spec[i] = freq_mask(datasetA_spec[i])
             
-            for i in range(len(datasetB_spec)):
-                if self.TimeMask and random.randint(0,5) == 0:
-                    datasetB_spec[i] = time_mask(datasetB_spec[i])
-                if self.FreqMask and random.randint(0,5) == 0:
-                    datasetB_spec[i] = freq_mask(datasetB_spec[i]) 
+        #    for i in range(len(datasetB_spec)):
+        #        if self.TimeMask and random.randint(0,5) == 0:
+        #            datasetB_spec[i] = time_mask(datasetB_spec[i])
+        #        if self.FreqMask and random.randint(0,5) == 0:
+        #            datasetB_spec[i] = freq_mask(datasetB_spec[i]) 
 
         if self.valid:
             if datasetB_spec is None:  # only return datasetA utterance
