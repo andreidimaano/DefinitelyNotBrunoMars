@@ -20,13 +20,13 @@ def time_stretch(data, factor):
   # audio_stretched_resampled = librosa.resample(audio_stretched,  orig_sr = len(audio_stretched), target_sr = len(data))
   return audio_stretched #audio_stretched_resampled
 
-def pitch_shift(data, sr, steps):
-  return librosa.effects.pitch_shift(data, sr=sr, n_steps=steps)
+def pitch_shift(data, factor, sr=22050):
+  return librosa.effects.pitch_shift(data, sr=sr, n_steps=factor)
 
-def white_noise(data, intensity): # needs testing
+def white_noise(data, factor): # needs testing
   w_noise = np.random.normal(0, data.std(), data.size)
   # may need to replace self.sr with data.size
-  new_data = data + (intensity * w_noise)
+  new_data = data + (factor * w_noise)
   return new_data
     
 def harm_distort(data): # needs testing

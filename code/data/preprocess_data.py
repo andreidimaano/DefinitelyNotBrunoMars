@@ -3,7 +3,7 @@ import os
 import librosa
 import numpy as np
 
-def audio_to_spectrogram(src_dir, artist):
+def audio_to_spectrogram(src_dir, artist, audioAug, audioFac=None, signalAug=None):
     """
     ARGS
         src_dir: directory with audio files
@@ -15,6 +15,7 @@ def audio_to_spectrogram(src_dir, artist):
     mel_list = list()
     raw_list = list()
     
+    
     i = 0
     for root, _, files in os.walk(src_dir, topdown=False):
         for file_name in files:
@@ -23,8 +24,10 @@ def audio_to_spectrogram(src_dir, artist):
                     input_file = os.path.join(root, file_name)
                     print(file_name, input_file)
                     audio, sr = librosa.load(input_file, sr=22050)
-                    mel_spectrogram = librosa.feature.melspectrogram(y=audio, sr=sr, n_fft=1024, hop_length=256, n_mels=80)
+                    audioTemp = audioAug(data=audio, factor=audioFac)
+                    mel_spectrogram = librosa.feature.melspectrogram(y=audioTemp, sr=sr, n_fft=1024, hop_length=256, n_mels=80)
                     log_mel_spectrogram = librosa.power_to_db(mel_spectrogram, ref=np.max)
+                    log_mel_spectrogram = log_mel_spectrogram if signalAug is None else signalAug(spec=log_mel_spectrogram)
                     if log_mel_spectrogram.shape[-1] >= 64:    # training sample consists of 64 randomly cropped frames
                         mel_list.append(log_mel_spectrogram)
                         raw_list.append(audio)
