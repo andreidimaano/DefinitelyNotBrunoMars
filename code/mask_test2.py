@@ -27,15 +27,15 @@ class MaskCycleGANVCTesting(object):
         self.dataset_A_mean = dataset_A_norm_stats['mean']
         self.dataset_A_std = dataset_A_norm_stats['std']
 
-        
+
+        self.dataset_B = self.loadPickleFile(f'data/testing_data/{b_prefix}_test_spec.pickle')
         dataset_B_norm_stats = np.load(f'data/testing_data/{b_prefix}_test_norm_stat.npz')
         self.dataset_B_mean = dataset_B_norm_stats['mean']
         self.dataset_B_std = dataset_B_norm_stats['std']
         
         self.dataset = VCDataset(datasetA_spec=self.dataset_A,
-                                 datasetB_spec=None,
+                                 datasetB_spec=self.dataset_B,
                                  valid=True)
-        
         
         self.test_dataloader = torch.utils.data.DataLoader(dataset=self.dataset,
                                                            batch_size=1,
@@ -69,16 +69,19 @@ class MaskCycleGANVCTesting(object):
             os.makedirs(directory_path)
             print(f"Directory '{directory_path}' created successfully.")
         mcds = list()
-        for i, sample in enumerate(tqdm(self.test_dataloader)):
-            # converts full if small sample else 10 second sample
-            real_A = sample[:,:,2616:2616+872]
+        for i, (source, target) in enumerate(tqdm(self.test_dataloader)):
+            real_A = source
             real_A = real_A.to(self.device, dtype=torch.float)
             fake_B = self.generator(real_A, torch.ones_like(real_A))
             fake_B_np = fake_B[0].detach().cpu().numpy()
             real_A_np = real_A[0].detach().cpu().numpy()
+            target_np = target[0].detach().cpu().numpy()
+            min_len = min(fake_B_np.shape[1], target_np.shape[1])
+            target_np = target_np[:,:min_len]
+            fake_B_np = fake_B_np[:,:min_len]
+            spectrogram_to_wav(target_np, self.dataset_B_mean, self.dataset_B_std, f'outputs/generated_audio/{self.load_id}/target_{i}.wav', sr=22050)
             spectrogram_to_wav(fake_B_np, self.dataset_B_mean, self.dataset_B_std, f'outputs/generated_audio/{self.load_id}/fakeB_{i}.wav', sr=22050)
-            
             spectrogram_to_wav(real_A_np, self.dataset_A_mean, self.dataset_A_std, f'outputs/generated_audio/{self.load_id}/realA_{i}.wav', sr=22050)
             
-            mcds.append(get_mcd(fake_B_np, real_A_np))
+            mcds.append(get_mcd(fake_B_np, target_np))
         return np.array(mcds)

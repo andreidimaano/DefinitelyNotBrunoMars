@@ -1,22 +1,17 @@
-import os
 import pickle
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 
 import torch
 import torch.utils.data as data
 
-# from maskgan.model import Generator, Discriminator
 from maskgan.modelv3 import Generator, Discriminator
-# from args.cycleGAN_train_arg_parser import CycleGANTrainArgParser
 from data.VCDataset import VCDataset
-import h5py
 import time
 import matplotlib.pyplot as plt
-# from mask_cyclegan_vc.utils import decode_melspectrogram, get_mel_spectrogram_fig
-# from logger.train_logger import TrainLogger
-# from saver.model_saver import ModelSaver
+
+from tqdm import tqdm
+import os
 
 """
 Trains MaskCycleGAN-VC as described in https://arxiv.org/pdf/2102.12841.pdf
@@ -27,15 +22,17 @@ class MaskCycleGANVCTraining(object):
     """Trainer for MaskCycleGAN-VC
     """
 
-    def __init__(self, load_model=False):
+    def __init__(self, speakerA, speakerB, datasetA_spec, datasetB_spec, train_id, num_epochs=500, freq_mask=False, augment_type=None, aug_list=None, load_id=None, load_model=False):
         """
         Args:
             args (Namespace): Program arguments from argparser
         """
         # Store args
+        self.train_id = train_id
+        self.load_id = load_id
         self.training_time = 0
         self.average_time = 0
-        self.num_epochs = 2
+        self.num_epochs = num_epochs
         self.start_epoch = 1
         self.generator_lr = 1e-5
         self.discriminator_lr = 1e-4
@@ -47,35 +44,32 @@ class MaskCycleGANVCTraining(object):
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.epochs_per_save = 100
         self.epochs_per_plot = 10
-
-        # Initialize MelGAN-Vocoder used to decode Mel-spectrograms
-        # self.vocoder = torch.hub.load('descriptinc/melgan-neurips', 'load_melgan')
-
         self.sample_rate = 22050
+        self.augment_type = augment_type
 
-        # h5_file = h5py.File('data/iu.h5', 'r')
-        # dataset_a = h5_file['audio']
-        # self.datasetA_spec = np.array(dataset_a)
-        # h5_file.close()
-
-        # h5_file = h5py.File('data/bruno.h5', 'r')
-        # dataset_b = h5_file['audio']
-        # self.datasetB_spec = np.array(dataset_b)
-        # h5_file.close()
         # Initialize speakerA's dataset
-        self.datasetA_spec = self.loadPickleFile("data/iu_spec.pickle")
-        self.datasetA_raw = self.loadPickleFile("data/iu_raw.pickle")
-        datasetA_norm_stats = np.load("data/iu_norm_stat.npz")
-        self.datasetA_spec_mean = datasetA_norm_stats['mean']
-        self.datasetA_std = datasetA_norm_stats['std']
-
+        self.datasetA_spec = datasetA_spec
+        self.datasetA_aug = None
+        datasetA_augments = list()
+        
         # Initialize speakerB's dataset
-        self.datasetB_spec = self.loadPickleFile("data/bruno_mars_spec.pickle")
-        self.datasetB_raw = self.loadPickleFile("data/bruno_mars_raw.pickle")
-        dataset_B_norm_stats = np.load("data/bruno_mars_norm_stat.npz")
-        self.dataset_B_spec_mean = dataset_B_norm_stats['mean']
-        self.dataset_B_spec_std = dataset_B_norm_stats['std']
+        self.datasetB_spec = datasetB_spec
+        self.datasetB_aug = None
+        datasetB_augments = list()
+        
+        if augment_type: # should always be applied together
+            if aug_list: 
+                for aug in aug_list:
+                    datasetA_augments.append(self.loadPickleFile(f'data/training_data/{speakerA}_train_{augment_type}_{aug}_spec.pickle'))
+                    datasetA_augments.append(self.loadPickleFile(f'data/training_data/{speakerB}_train_{augment_type}_{aug}_spec.pickle'))
+            else:
+                datasetB_augments.append(self.loadPickleFile(f'data/training_data/{speakerA}_train_{augment_type}_spec.pickle'))
+                datasetB_augments.append(self.loadPickleFile(f'data/training_data/{speakerB}_train_{augment_type}_spec.pickle'))
+            
+            self.datasetA_aug = datasetA_augments
+            self.datasetB_aug = datasetB_augments
 
+        
         # Compute lr decay rate
         self.n_samples = len(self.datasetA_spec)
         print(f'n_samples = {self.n_samples}')
@@ -90,12 +84,12 @@ class MaskCycleGANVCTraining(object):
         self.num_frames = 64 
         self.dataset = VCDataset(datasetA_spec=self.datasetA_spec,
                     datasetB_spec=self.datasetB_spec,
-                    datasetA_raw=self.datasetA_raw,
-                    datasetB_raw=self.datasetB_raw,
+                    datasetA_aug=self.datasetA_aug,
+                    datasetB_aug=self.datasetB_aug,
+                    aug_list = aug_list,
                     n_frames=64, 
                     max_mask_len=25,
-                    TimeStretch=True,
-                    PitchShift=True)
+                    freq_mask=freq_mask)
         self.train_dataloader = torch.utils.data.DataLoader(dataset=self.dataset,
                                                             batch_size=self.mini_batch_size,
                                                             shuffle=True,
@@ -104,6 +98,9 @@ class MaskCycleGANVCTraining(object):
         # Initialize Validation Dataloader (used to generate intermediate outputs)
         self.validation_dataset = VCDataset(datasetA_spec=self.datasetA_spec,
                                             datasetB_spec=self.datasetB_spec,
+                                            datasetA_aug=self.datasetA_aug,
+                                            datasetB_aug=self.datasetB_aug,
+                                            aug_list = aug_list,
                                             n_frames=320,
                                             max_mask_len=32,
                                             valid=True)
@@ -123,15 +120,26 @@ class MaskCycleGANVCTraining(object):
         # Discriminator to compute 2 step adversarial loss
         self.discriminator_B2 = Discriminator().to(self.device)
         
+        
+        directory_path = f'model_checkpoint/{self.train_id}'
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
+            print(f"Directory '{directory_path}' created successfully.")
+        
+        directory_path = f'outputs/loss_csv/{self.train_id}'
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
+            print(f"Directory '{directory_path}' created successfully.")
+        
         if load_model:
-            self.generator_A2B.load_state_dict(torch.load('model_checkpoint/GA2B.pth'))
-            self.generator_B2A.load_state_dict(torch.load('model_checkpoint/GB2A.pth'))
-            self.discriminator_A.load_state_dict(torch.load('model_checkpoint/DA.pth'))
-            self.discriminator_B.load_state_dict(torch.load('model_checkpoint/DB.pth'))
+            self.generator_A2B.load_state_dict(torch.load(f'model_checkpoint/{load_id}/GA2B.pth'))
+            self.generator_B2A.load_state_dict(torch.load(f'model_checkpoint/{load_id}/GB2A.pth'))
+            self.discriminator_A.load_state_dict(torch.load(f'model_checkpoint/{load_id}/DA.pth'))
+            self.discriminator_B.load_state_dict(torch.load(f'model_checkpoint/{load_id}/DB.pth'))
             # Discriminator to compute 2 step adversarial loss
-            self.discriminator_A2.load_state_dict(torch.load('model_checkpoint/DA2.pth'))
+            self.discriminator_A2.load_state_dict(torch.load(f'model_checkpoint/{load_id}/DA2.pth'))
             # Discriminator to compute 2 step adversarial loss
-            self.discriminator_B2.load_state_dict(torch.load('model_checkpoint/DB2.pth'))
+            self.discriminator_B2.load_state_dict(torch.load(f'model_checkpoint/{load_id}/DB2.pth'))
 
         # Initialize Optimizers
         g_params = list(self.generator_A2B.parameters()) + \
@@ -195,13 +203,8 @@ class MaskCycleGANVCTraining(object):
         dloss_arr = []
         gloss_arr = []
         start_time = time.time()
-        gloss = []
-        dloss = []
         for epoch in range(self.start_epoch, self.num_epochs + 1):
-            for i, (real_A, mask_A, real_B, mask_B) in enumerate(self.train_dataloader):                
-                if j % 100 == 0:
-                    print(f'iteration {j} start')
-
+            for i, (real_A, mask_A, real_B, mask_B) in enumerate(tqdm(self.train_dataloader)):               
                 with torch.set_grad_enabled(True):
                     real_A = real_A.to(self.device, dtype=torch.float)
                     mask_A = mask_A.to(self.device, dtype=torch.float)
@@ -254,20 +257,8 @@ class MaskCycleGANVCTraining(object):
                     g_loss = g_loss_A2B + g_loss_B2A + \
                         generator_loss_A2B_2nd + generator_loss_B2A_2nd + \
                         self.cycle_loss_lambda * cycleLoss + self.identity_loss_lambda * identityLoss
-                    # NOTE GENERATOR LOSS IS HERE
-                    gloss.append(g_loss.item())
-                    if j % 100 == 0:
-                        gloss_arr.append(np.log(g_loss.clone().cpu().detach().item()))
-                    
-                    if j % 1000 == 0:
-                        print("generator loss:", gloss_arr)
-                        plt.plot(gloss_arr)
-                        plt.title('Loss over Training')
-                        plt.xlabel('Iterations')
-                        plt.ylabel('Loss')
-
-                        
-
+                    if j % 50 == 0:
+                        gloss_arr.append(np.log(g_loss.cpu().detach().item()))
                     # Backprop for Generator
                     self.reset_grad()
                     g_loss.backward()
@@ -324,14 +315,10 @@ class MaskCycleGANVCTraining(object):
                     # Final Loss for discriminator with the Two Step Adverserial Loss
                     d_loss = (d_loss_A + d_loss_B) / 2.0 + \
                         (d_loss_A_2nd + d_loss_B_2nd) / 2.0
-                    dloss.append(d_loss.item())
-
-                    if j % 1000 == 0:
-                        print("d loss:", dloss_arr)
-                        plt.plot(dloss_arr)
-                        # Show the plot
-                        plt.show()
-                    # Backprop for Discriminator
+                    
+                    if j % 50 == 0:
+                        dloss_arr.append(d_loss.cpu().detach().item())
+                        
                     self.reset_grad()
                     d_loss.backward()
                     self.discriminator_optimizer.step()
@@ -345,25 +332,24 @@ class MaskCycleGANVCTraining(object):
                     self.identity_loss_lambda = 0
                 j += 1
             
-            torch.save(self.generator_A2B .state_dict(), 'model_checkpoint/GA2B.pth')
-            torch.save(self.generator_B2A .state_dict(), 'model_checkpoint/GB2A.pth')
-            torch.save(self.discriminator_A.state_dict(), 'model_checkpoint/DA.pth')
-            torch.save(self.discriminator_B.state_dict(), 'model_checkpoint/DB.pth')
-            torch.save(self.discriminator_A2.state_dict(), 'model_checkpoint/DA2.pth')
-            torch.save(self.discriminator_B2.state_dict(), 'model_checkpoint/DB2.pth')
-            
-            print(f'epoch {epoch} done')
+            torch.save(self.generator_A2B .state_dict(), f'model_checkpoint/{self.train_id}/GA2B.pth')
+            torch.save(self.generator_B2A .state_dict(), f'model_checkpoint/{self.train_id}/GB2A.pth')
+            torch.save(self.discriminator_A.state_dict(), f'model_checkpoint/{self.train_id}/DA.pth')
+            torch.save(self.discriminator_B.state_dict(), f'model_checkpoint/{self.train_id}/DB.pth')
+            torch.save(self.discriminator_A2.state_dict(), f'model_checkpoint/{self.train_id}/DA2.pth')
+            torch.save(self.discriminator_B2.state_dict(), f'model_checkpoint/{self.train_id}/DB2.pth')
         end_time = time.time()
-        csv_data = {"Generator Loss" : gloss, "Discriminator Loss" : dloss}
-        print(csv_data)
+        csv_data = {"Generator Loss" : gloss_arr, "Discriminator Loss" : dloss_arr}
         df = pd.DataFrame.from_dict(csv_data)
-        df.to_csv("Losses.csv", index=False)
-        torch.save(self.generator_A2B.state_dict(), "genAtoB.pth")
-        torch.save(self.generator_B2A.state_dict(), "genBtoA.pth")
-        torch.save(self.discriminator_A.state_dict(), "disA.pth")
-        torch.save(self.discriminator_B.state_dict(), "disB.pth")
-        torch.save(self.discriminator_A2.state_dict(), "disA2.pth")
-        torch.save(self.discriminator_B2.state_dict(), "disB2.pth")
-
-        self.training_time = end_time - start_time
-        self.average_time = self.training_time / (self.num_epochs - self.start_epoch)
+        df.to_csv(f'outputs/loss_csv/{self.train_id}.csv', index=False)
+        
+        plt.plot(gloss_arr, label='gloss')
+        plt.title('Loss over Training')
+        plt.xlabel('Iterations')
+        plt.ylabel('Loss')
+        plt.plot(dloss_arr, label='dloss')
+        plt.legend()
+        plt.show()
+        # self.training_time = end_time - start_time
+        # self.average_time = self.training_time / (self.num_epochs - self.start_epoch)
+        return gloss_arr, dloss_arr

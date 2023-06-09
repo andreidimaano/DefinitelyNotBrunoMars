@@ -10,102 +10,44 @@ from torch.utils.data.dataset import Dataset
 from .augmentation import *
 import torch
 import numpy as np
-import copy
 import random
 
 
 class VCDataset(Dataset):
-    def __init__(self, datasetA_spec, datasetB_spec, datasetA_raw=None, datasetB_raw=None, n_frames=64, max_mask_len=25, valid=False, 
-        TimeStretch=False, PitchShift=False, HarmDist=False, WhiteNoise=False, TimeMask=False, FreqMask=False):
+    def __init__(self, datasetA_spec, datasetB_spec, datasetA_aug=None, datasetB_aug=None, aug_list = None, n_frames=64, max_mask_len=25, valid=False, 
+        freq_mask=False):
         self.datasetA_spec = datasetA_spec
-        self.datasetA_raw = datasetA_raw
+        self.datasetA_aug = datasetA_aug
         self.datasetB_spec = datasetB_spec
-        self.datasetB_raw = datasetB_raw
+        self.datasetB_aug = datasetB_aug
         self.n_frames = n_frames
         self.valid = valid
         self.max_mask_len = max_mask_len
-        self.TimeStretch = TimeStretch 
-        self.PitchShift=PitchShift
-        self.HarmDist=HarmDist
-        self.WhiteNoise=WhiteNoise
-        self.TimeMask=TimeMask
-        self.FreqMask=FreqMask
+        self.apply_freq_mask=freq_mask
+        self.aug_list = aug_list
 
     def __getitem__(self, index):
-        datasetA_spec = self.datasetA_spec.copy()
-        datasetA_raw = self.datasetA_raw.copy()
-        datasetB_spec = self.datasetB_spec.copy()
-        datasetB_raw = self.datasetB_raw.copy()
+        datasetA_spec = self.datasetA_spec
+        datasetB_spec = self.datasetB_spec
         n_frames = self.n_frames # where each training sample consisted of 64 randomly cropped frames
-       #sr is 22050 
-        # Augmentations
-        # VoTrans, NoisyF0
-        # Time Warping
-        # Frequency Masking
-        # Speed up
-        # Pitch Shift
-        
-        # THESE ARE SPECTOGRAM AUGS
-        # TimeMask
-        # FrequencyMask
-        # nothing, 1, 2, 3, 4, 5, 6, (1,2), (1,6), (5,6)
-
-        if self.TimeStretch or self.PitchShift or self.HarmDist or self.WhiteNoise:
-            #APPLY AUG FIRST AND THEN CONVERT WAV TO SPECTO
-            for i in range(len(datasetA_raw)):
-                if self.TimeStretch and random.randint(0,5) == 0:
-                    datasetA_raw[i] = time_stretch(data=datasetA_raw[i], factor=3)
-                if self.PitchShift and random.randint(0,5) == 0:
-                    datasetA_raw[i] = pitch_shift(data=datasetA_raw[i], sr=22050, steps=.1)
-                if self.WhiteNoise and random.randint(0,5) == 0:
-                    datasetA_raw[i] = white_noise(data=datasetA_raw[i], intensity=1.5)
-                if self.HarmDist and random.randint(0,5) == 0:
-                    datasetA_raw[i] = harm_distort(data=datasetA_raw[i])
-
-                melA_spec = librosa.feature.melspectrogram(y=datasetA_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
-                logmelA_spec = librosa.power_to_db(melA_spec, ref=np.max)
-                datasetA_spec[i] = logmelA_spec
-                #if self.TimeMask:
-                #    datasetA_spec[i] = time_mask(datasetA_spec[i])
-                #if self.FreqMask:
-                #    datasetA_spec[i] = freq_mask(datasetA_spec[i])
-
-
-            for i in range(len(datasetB_raw)):
-                if self.TimeStretch and random.randint(0,5) == 0:
-                    datasetB_raw[i] = time_stretch(data=datasetB_raw[i], factor=3)
-                if self.PitchShift and random.randint(0,5) == 0:
-                    datasetB_raw[i] = pitch_shift(data=datasetB_raw[i], sr=22050, steps=.1)
-                if self.WhiteNoise and random.randint(0,5) == 0:
-                    datasetB_raw[i] = white_noise(data=datasetB_raw[i], intensity=1.5)
-                if self.HarmDist and random.randint(0,5) == 0:
-                    datasetB_raw[i] = harm_distort(data=datasetB_raw[i])
-
-                melB_spec = librosa.feature.melspectrogram(y=datasetB_raw[i], sr=22050, n_fft=1024, hop_length=256, n_mels=80)
-                logmelB_spec = librosa.power_to_db(melB_spec, ref=np.max)
-                datasetB_spec[i] = logmelB_spec
-                #if self.TimeMask:
-                #    datasetB_spec[i] = time_mask(datasetB_spec[i])
-                #if self.FreqMask:
-                #    datasetB_spec[i] = freq_mask(datasetB_spec[i])    
-        if self.TimeMask or self.FreqMask:
-            for i in range(len(datasetA_spec)):
-                if self.TimeMask and random.randint(0,5) == 0:
-                    datasetA_spec[i] = time_mask(datasetA_spec[i])
-                if self.FreqMask and random.randint(0,5) == 0:
-                    datasetA_spec[i] = freq_mask(datasetA_spec[i])
-            
-            for i in range(len(datasetB_spec)):
-                if self.TimeMask and random.randint(0,5) == 0:
-                    datasetB_spec[i] = time_mask(datasetB_spec[i])
-                if self.FreqMask and random.randint(0,5) == 0:
-                    datasetB_spec[i] = freq_mask(datasetB_spec[i]) 
-
         if self.valid:
             if datasetB_spec is None:  # only return datasetA utterance
                 return datasetA_spec[index]
             else:
                 return datasetA_spec[index], datasetB_spec[index]
+        datasetA_spec = datasetA_spec.copy()
+        datasetA_spec = datasetB_spec.copy()
+        datasetA = None
+        datasetB = None
+
+        if self.datasetA_aug and self.datasetB_aug:
+            aug_a = 0 if (not self.aug_list or len(self.aug_list) == 1) else np.random.randint(0, len(self.aug_list))
+            aug_b = 0 if (not self.aug_list or len(self.aug_list) == 1) else np.random.randint(0, len(self.aug_list))
+            datasetA = self.datasetA_aug[aug_a] if np.random.rand() <= 0.5 else datasetA_spec
+            datasetB = self.datasetB_aug[aug_b] if np.random.rand() <= 0.5 else datasetB_spec
+        else:
+            datasetA = datasetA_spec
+            datasetB = datasetB_spec
 
         self.length = min(len(datasetA_spec), len(datasetB_spec))
         num_samples = min(len(datasetA_spec), len(datasetB_spec))
@@ -117,8 +59,6 @@ class VCDataset(Dataset):
         train_data_A_idx_subset = train_data_A_idx[:num_samples]
         train_data_B_idx_subset = train_data_B_idx[:num_samples]
 
-        
-
         train_data_A = list()
         train_mask_A = list()
         train_data_B = list()
@@ -126,7 +66,7 @@ class VCDataset(Dataset):
 
         # apply mask
         for idx_A, idx_B in zip(train_data_A_idx_subset, train_data_B_idx_subset):
-            data_A = datasetA_spec[idx_A]
+            data_A = datasetA[idx_A]
             frames_A_total = data_A.shape[1]
             #print(data_A.shape)
             assert frames_A_total >= n_frames
@@ -140,7 +80,7 @@ class VCDataset(Dataset):
             train_data_A.append(data_A[:, start_A:end_A])
             train_mask_A.append(mask_A)
 
-            data_B = datasetB_spec[idx_B]
+            data_B = datasetB[idx_B]
             frames_B_total = data_B.shape[1]
             #print(data_B.shape)
             assert frames_B_total >= n_frames
@@ -158,9 +98,26 @@ class VCDataset(Dataset):
         train_data_B = np.array(train_data_B)
         train_mask_A = np.array(train_mask_A)
         train_mask_B = np.array(train_mask_B)
-
+        
+        # apply freq mask here
+        if self.apply_freq_mask and np.random.rand() <= 0.5:
+            train_data_A = self.freq_mask(train_data_A)
+            train_data_B = self.freq_mask(train_data_B)
+            train_mask_A = self.freq_mask(train_mask_A)
+            train_mask_B = self.freq_mask(train_mask_B)
+        
         return train_data_A[index], train_mask_A[index],  train_data_B[index], train_mask_B[index]
+    def freq_mask(self, spec, length=4):
+        start = random.randrange(0, spec.shape[0]-length)
+        end = start+length
 
+        # if start and end are not valid indexes return spectrogram with no augments
+        if start < 0 or start >= spec.shape[0] or end < 0 or end >=spec.shape[0]:
+            return spec
+        
+        spec[:][start:end] = spec.mean()
+            
+        return spec
     def __len__(self):
         if self.datasetB_spec is None:
             return len(self.datasetA_spec)
