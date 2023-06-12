@@ -2,6 +2,6 @@ Andrei Dimaano: Dataset Curation, Data pipeline for Training, Getting MaskGAN to
 
 Nathan Lee : data augmentation implementations, signal plots and spectrogram for paper, getting dance GAN implementation to train and output results, video preprocessing, and other misc.
 
-Kunal Mittal: Dataset augmentation, MaskCycleGAN development, training notebooksAndrei Dimaano: Dataset Curation, Data pipeline for Training, Getting MaskGAN to work, Python notebooks for training, Audio visualization in React
+Kunal Mittal: Dataset augmentation, MaskCycleGAN development, training notebook
 
-Charles Hong: 
+Charles Hong: Plot Survey Results, MCD function, helped with data augmentation setup, latex report formatting, vocal extraction (scratched), grid search (scratched)
