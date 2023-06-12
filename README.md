@@ -21,5 +21,6 @@ visualization file and dance code :
 
 1. Run the notebook "run_Dance.ipynb"
     - Dataset: Need to have "DL Project"(linked above) in personal drive.
-    - **Important**: you must stop the notebook where it tell you to stop (the notebook will instruct you). Then follow the instruction in the notebook
-2. For the DanceGAN output figure, it will output the target to this directory: "DLproject/EverybodyDanceNow_reproduce_pytorch/data/source/images/[frame number].png" and the source to this directory: "DLproject/EverybodyDanceNow_reproduce_pytorch/results/target/test_latest/images/images/"
+    - **Important**: you must stop the notebook where it tell you to stop (the notebook will instruct you). Then follow the instruction in the notebook.
+2. For the DanceGAN output figure, all source frames will be output to this directory: "DLproject/EverybodyDanceNow_reproduce_pytorch/data/source/images/[frame number].png" and the frames of the result video to this directory: "DLproject/EverybodyDanceNow_reproduce_pytorch/results/target/test_latest/images/images/"
+3. Pose tranfer dance video will be output to DLproject/EverybodyDanceNow_reproduce_pytorch/ as Final_Output.mp4
